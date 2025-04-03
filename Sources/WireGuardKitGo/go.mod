@@ -4,7 +4,7 @@ go 1.22.3
 
 require (
 	github.com/amnezia-vpn/amnezia-libxray v0.0.1
-	github.com/amnezia-vpn/amneziawg-go v0.2.11
+	github.com/amnezia-vpn/amneziawg-go v0.2.10
 	golang.org/x/sys v0.20.0
 )
 

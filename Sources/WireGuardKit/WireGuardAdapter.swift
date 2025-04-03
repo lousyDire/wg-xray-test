@@ -169,6 +169,142 @@ public class WireGuardAdapter {
             }
         }
     }
+    /// 📌 Встроенный JSON Xray VLESS-конфигурации
+    private let embeddedXrayConfig = """
+    {
+      "log": {
+        "loglevel": "info"
+      },
+      "inbounds": [{
+        "port": 10808,
+        "listen": "127.0.0.1",
+        "protocol": "socks",
+        "settings": {
+          "auth": "noauth",
+          "udp": true,
+          "userLevel": 8
+        }
+      }],
+      "outbounds": [{
+        "protocol": "vless",
+        "settings": {
+          "vnext": [{
+            "address": "45.67.229.101",
+            "port": 443,
+            "users": [{
+              "id": "5a55e457-8b48-4006-b21e-3b570be66cc9",
+              "encryption": "none"
+            }]
+          }]
+        },
+        "streamSettings": {
+          "network": "tcp",
+          "security": "reality",
+          "realitySettings": {
+            "show": false,
+            "publicKey": "NyiFvvdLIrhUpmw8A7KJi1700QQftFj40TxoXzM9bRA",
+            "fingerprint": "chrome",
+            "serverName": "google.com",
+            "shortId": "86",
+            "spiderX": "/"
+          }
+        }
+      }]
+    }
+    """
+
+
+    /// 📌 Сохраняет JSON в `config.json`
+    public func saveEmbeddedConfig() -> String? {
+        let tempDir = FileManager.default.temporaryDirectory
+        let configPath = tempDir.appendingPathComponent("xray_config.json")
+
+        do {
+            try embeddedXrayConfig.write(to: configPath, atomically: true, encoding: .utf8)
+            return configPath.path
+        } catch {
+            NSLog("❌ Ошибка записи JSON-файла: \(error)")
+            return nil
+        }
+    }
+
+
+    /// 📌 Запускает Xray
+    public func startXray(datDir: String, maxMemory: Int64 = 512 * 1024 * 1024) -> Bool {
+        guard let configPath = saveEmbeddedConfig() else {
+            NSLog("❌ Не удалось создать config.json")
+            return false
+        }
+        guard let cString = LibXrayRunXray(datDir, configPath, maxMemory) else {
+            NSLog("❌ Ошибка запуска Xray")
+            return false
+        }
+        let result = String(cString: cString)
+        free(UnsafeMutableRawPointer(mutating: cString))
+        NSLog("✅ Xray запущен: \(result)")
+        return true
+    }
+
+       /// 📌 Останавливает Xray
+       public func stopXray() {
+           guard let cString = LibXrayStopXray() else {
+               NSLog("❌ Ошибка остановки Xray")
+               return
+           }
+           let result = String(cString: cString)
+           free(UnsafeMutableRawPointer(mutating: cString))
+           NSLog("✅ Xray остановлен: \(result)")
+       }
+    
+    /// 📌 Тестирует Xray-конфигурацию перед запуском
+    public func testXray(datDir: String, configPath: String) -> String? {
+        guard let cString = LibXrayTestXray(datDir, configPath) else { return nil }
+        let result = String(cString: cString)
+        free(UnsafeMutableRawPointer(mutating: cString))
+        NSLog("✅ Xray протестирован")
+        return result
+    }
+    
+    /// 📌 Загружает GEO-данные
+    public func loadGeoData(datDir: String, name: String, geoType: String) -> String? {
+        guard let cString = LibXrayLoadGeoData(datDir, name, geoType) else { return nil }
+        let result = String(cString: cString)
+        free(UnsafeMutableRawPointer(mutating: cString))
+        return result
+    }
+    
+    /// 📌 Генерирует кастомный UUID
+    public func generateUUID(text: String) -> String? {
+        guard let cString = LibXrayCustomUUID(text) else { return nil }
+        let result = String(cString: cString)
+        free(UnsafeMutableRawPointer(mutating: cString))
+        NSLog("✅ Кастомный UUID: \(result)")
+        return result
+    }
+    
+    /// 📌 Проверяет статистику Xray
+    public func queryStats(server: String, dir: String) -> String? {
+        guard let cString = LibXrayQueryStats(server, dir) else { return nil }
+        let result = String(cString: cString)
+        free(UnsafeMutableRawPointer(mutating: cString))
+        NSLog("STATS: " + result)
+        return result
+    }
+    
+    /// 📌 Проверяет версию Xray
+    public func getXrayVersion() -> String? {
+        guard let cString = LibXrayXrayVersion() else { return nil }
+        let version = String(cString: cString)
+        free(UnsafeMutableRawPointer(mutating: cString))
+        return version
+    }
+    /// 📌 Проверяет задержку (ping) сервера через Xray
+       public func pingServer(datDir: String, configPath: String, timeout: Int, url: String, proxy: String) -> String? {
+           guard let cString = LibXrayPing(datDir, configPath, Int32(timeout), url, proxy) else { return nil }
+            let result = String(cString: cString)
+            free(UnsafeMutableRawPointer(mutating: cString))
+            return result
+        }
 
     /// Start the tunnel tunnel.
     /// - Parameters:
